@@ -4,29 +4,83 @@
     <meta charset="UTF-8">
     <title>GamePi43 DTS Generator</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
-        .input-row { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
-        label { width: 70px; font-weight: bold; }
-        input { width: 60px; padding: 5px; }
-        select { width: 140px; padding: 5px; }
-        .key-name { width: 180px; color: blue; font-size: 0.9em; font-weight: bold; overflow: hidden; white-space: nowrap; }
-        button { padding: 5px 8px; cursor: pointer; transition: background-color 0.2s; }
-        .btn-clear { background-color: #ffcccc; }
-        textarea { width: 100%; height: 300px; font-family: monospace; margin-top: 20px; }
+        :root {
+            --bg-color: #1a1a1a;
+            --panel-bg: #252525;
+            --text-color: #e0e0e0;
+            --border-color: #444;
+            --accent-blue: #3498db;
+            --accent-red: #e74c3c;
+            --accent-green: #2ecc71;
+        }
+
+        body { 
+            font-family: sans-serif; 
+            padding: 10px; 
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+
+        .container { max-width: 700px; margin: 0 auto; }
+        h1 { font-size: 1.2rem; border-bottom: 2px solid var(--accent-blue); padding-bottom: 5px; }
+
+        .form-panel {
+            background: var(--panel-bg);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        /* 行の配置：横並びを強制し、折り返しを防ぐ */
+        .input-row { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            padding: 4px 0; 
+            border-bottom: 1px solid #333;
+            white-space: nowrap;
+        }
+
+        /* 各要素の幅をコンパクトに調整 */
+        .input-row label { width: 50px; font-weight: bold; color: #aaa; flex-shrink: 0; font-size: 0.9rem; }
+        .input-row input { width: 50px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .input-row select { width: 120px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .input-row .key-name { width: 100px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
+
+        /* ボタンエリア：親要素に追従させ、右寄せにしない */
+        .btn-group { display: flex; gap: 5px; flex-shrink: 0; }
+
+        button { 
+            padding: 4px 8px; cursor: pointer; 
+            border: none; border-radius: 4px;
+            font-size: 0.8rem; font-weight: bold;
+        }
+
+        .btn-clear { background-color: var(--accent-red); color: white; }
+        .btn-capture { background-color: var(--accent-green); color: white; }
+        
+        .btn-main { background-color: var(--accent-blue); color: white; margin-top: 10px; padding: 8px 16px; }
+
+        textarea { 
+            width: 100%; height: 200px; 
+            background: #000; color: #0f0; 
+            font-family: monospace; 
+            margin-top: 10px; padding: 10px; border-radius: 4px;
+        }
     </style>
 </head>
 <body>
-    <h1>GamePi43 DTS Generator</h1>
-    <p>Captureで学習するか、プルダウンから特殊キーを選択してください。</p>
-    
-    <button onclick="clearAll()" style="margin-bottom:15px; padding:10px; background-color: #ff9999;">All Clear</button>
 
-    <div id="form-container"></div>
-    
-    <button onclick="generate()" style="margin-top:10px; padding:10px;">Generate DTS</button>
-    <button onclick="download()">Download .dts</button>
+    <div class="container">
+        <h1>GamePi43 DTS Generator</h1>
+        <button onclick="clearAll()" class="btn-clear" style="margin-bottom:10px;">All Clear</button>
 
-    <textarea id="output" readonly></textarea>
+        <div id="form-container" class="form-panel"></div>
+        
+        <button onclick="generate()" class="btn-main">Generate DTS</button>
+        <button onclick="download()" class="btn-main" style="background-color: #555;">Download .dts</button>
+
+        <textarea id="output" readonly></textarea>
+    </div>
 
     <script>
         const buttons = [
@@ -39,7 +93,6 @@
             { id: 'hotkey', label: 'HOTKEY', gpio: 2 }
         ];
 
-        // プルダウン用リスト
         const presetKeys = [
             { name: "--- Select ---", code: "" },
             { name: "SHIFT (L)", code: 42 }, { name: "SHIFT (R)", code: 54 },
@@ -60,14 +113,15 @@
                     <input type="text" id="code_${b.id}" placeholder="Code">
                     <select id="sel_${b.id}" onchange="selectPreset('${b.id}')">${options}</select>
                     <span id="label_${b.id}" class="key-name">-</span>
-                    <button class="btn-clear" onclick="clearRow('${b.id}')">Clear</button>
-                    <button id="btn_${b.id}" onclick="captureKey('${b.id}', event)">Capture</button>
+                    <div class="btn-group">
+                        <button class="btn-clear" onclick="clearRow('${b.id}')">Clear</button>
+                        <button class="btn-capture" id="btn_${b.id}" onclick="captureKey('${b.id}', event)">Capture</button>
+                    </div>
                 </div>
             `;
         });
 
         function getDisplayName(name) {
-            // METAキーとして認識された場合や、プルダウンでRasPi Keyが選ばれた場合に置換
             if (name.toUpperCase() === "META" || name.toUpperCase().includes("RASPI KEY")) {
                 return "RasPi Key";
             }
@@ -99,22 +153,19 @@
 
         function captureKey(btnId, event) {
             const btn = event.target;
-            btn.style.backgroundColor = 'red';
-            btn.innerText = 'Waiting...';
+            btn.style.backgroundColor = 'var(--accent-red)';
+            btn.innerText = 'Wait';
 
             const handler = (e) => {
                 const code = e.keyCode;
                 document.getElementById('code_' + btnId).value = code;
-                
-                // プルダウンをリセット
                 document.getElementById('sel_' + btnId).value = '';
 
-                // 名前を取得（METAならRasPi Keyに変換）
                 const name = getDisplayName(e.key);
                 document.getElementById('label_' + btnId).innerText = name;
                 keyNames[btnId] = name;
                 
-                btn.style.backgroundColor = '';
+                btn.style.backgroundColor = 'var(--accent-green)';
                 btn.innerText = 'Capture';
                 
                 window.removeEventListener('keydown', handler);
@@ -129,7 +180,6 @@
         function generate() {
             let config = buttons.map(b => {
                 const code = document.getElementById('code_' + b.id).value || 0;
-                // 名称がセットされていない場合はCODE番号を表示
                 const displayName = keyNames[b.id] || ("KEY_" + code);
                 return `
                 ${b.id}_button: ${b.id}_button {
