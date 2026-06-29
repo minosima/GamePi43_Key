@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>GamePi43 DTS Generator</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .input-row { display: flex; align-items: center; margin-bottom: 8px; gap: 8px; }
+        label { width: 70px; font-weight: bold; }
+        input { width: 60px; padding: 5px; }
+        select { width: 140px; padding: 5px; }
+        .key-name { width: 180px; color: blue; font-size: 0.9em; font-weight: bold; overflow: hidden; white-space: nowrap; }
+        button { padding: 5px 8px; cursor: pointer; transition: background-color 0.2s; }
+        .btn-clear { background-color: #ffcccc; }
+        textarea { width: 100%; height: 300px; font-family: monospace; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>GamePi43 DTS Generator</h1>
+    <p>Captureで学習するか、プルダウンから特殊キーを選択してください。</p>
+    
+    <button onclick="clearAll()" style="margin-bottom:15px; padding:10px; background-color: #ff9999;">All Clear</button>
+
+    <div id="form-container"></div>
+    
+    <button onclick="generate()" style="margin-top:10px; padding:10px;">Generate DTS</button>
+    <button onclick="download()">Download .dts</button>
+
+    <textarea id="output" readonly></textarea>
+
+    <script>
+        const buttons = [
+            { id: 'up', label: 'UP', gpio: 4 }, { id: 'down', label: 'DOWN', gpio: 17 },
+            { id: 'left', label: 'LEFT', gpio: 27 }, { id: 'right', label: 'RIGHT', gpio: 22 },
+            { id: 'a', label: 'A', gpio: 25 }, { id: 'b', label: 'B', gpio: 24 },
+            { id: 'x', label: 'X', gpio: 15 }, { id: 'y', label: 'Y', gpio: 18 },
+            { id: 'l', label: 'L', gpio: 14 }, { id: 'r', label: 'R', gpio: 23 },
+            { id: 'start', label: 'START', gpio: 10 }, { id: 'select', label: 'SELECT', gpio: 9 },
+            { id: 'hotkey', label: 'HOTKEY', gpio: 2 }
+        ];
+
+        // プルダウン用リスト
+        const presetKeys = [
+            { name: "--- Select ---", code: "" },
+            { name: "SHIFT (L)", code: 42 }, { name: "SHIFT (R)", code: 54 },
+            { name: "CTRL (L)", code: 29 }, { name: "CTRL (R)", code: 97 },
+            { name: "ALT (L)", code: 56 }, { name: "ALT (R)", code: 100 },
+            { name: "RasPi Key (L)", code: 125 }, { name: "RasPi Key (R)", code: 126 }
+        ];
+
+        let keyNames = {};
+        const container = document.getElementById('form-container');
+
+        buttons.forEach(b => {
+            const options = presetKeys.map(k => `<option value="${k.code}">${k.name}</option>`).join('');
+            
+            container.innerHTML += `
+                <div class="input-row">
+                    <label>${b.label}</label>
+                    <input type="text" id="code_${b.id}" placeholder="Code">
+                    <select id="sel_${b.id}" onchange="selectPreset('${b.id}')">${options}</select>
+                    <span id="label_${b.id}" class="key-name">-</span>
+                    <button class="btn-clear" onclick="clearRow('${b.id}')">Clear</button>
+                    <button id="btn_${b.id}" onclick="captureKey('${b.id}', event)">Capture</button>
+                </div>
+            `;
+        });
+
+        function getDisplayName(name) {
+            // METAキーとして認識された場合や、プルダウンでRasPi Keyが選ばれた場合に置換
+            if (name.toUpperCase() === "META" || name.toUpperCase().includes("RASPI KEY")) {
+                return "RasPi Key";
+            }
+            return name.toUpperCase();
+        }
+
+        function selectPreset(btnId) {
+            const select = document.getElementById('sel_' + btnId);
+            const code = select.value;
+            if(code !== "") {
+                const name = select.options[select.selectedIndex].text;
+                document.getElementById('code_' + btnId).value = code;
+                document.getElementById('label_' + btnId).innerText = name;
+                keyNames[btnId] = name;
+            }
+        }
+
+        function clearRow(btnId) {
+            document.getElementById('code_' + btnId).value = '';
+            document.getElementById('label_' + btnId).innerText = '-';
+            const sel = document.getElementById('sel_' + btnId);
+            if(sel) sel.value = '';
+            delete keyNames[btnId];
+        }
+
+        function clearAll() {
+            buttons.forEach(b => clearRow(b.id));
+        }
+
+        function captureKey(btnId, event) {
+            const btn = event.target;
+            btn.style.backgroundColor = 'red';
+            btn.innerText = 'Waiting...';
+
+            const handler = (e) => {
+                const code = e.keyCode;
+                document.getElementById('code_' + btnId).value = code;
+                
+                // プルダウンをリセット
+                document.getElementById('sel_' + btnId).value = '';
+
+                // 名前を取得（METAならRasPi Keyに変換）
+                const name = getDisplayName(e.key);
+                document.getElementById('label_' + btnId).innerText = name;
+                keyNames[btnId] = name;
+                
+                btn.style.backgroundColor = '';
+                btn.innerText = 'Capture';
+                
+                window.removeEventListener('keydown', handler);
+                e.preventDefault();
+            };
+            
+            setTimeout(() => {
+                window.addEventListener('keydown', handler, {once: true});
+            }, 100);
+        }
+
+        function generate() {
+            let config = buttons.map(b => {
+                const code = document.getElementById('code_' + b.id).value || 0;
+                // 名称がセットされていない場合はCODE番号を表示
+                const displayName = keyNames[b.id] || ("KEY_" + code);
+                return `
+                ${b.id}_button: ${b.id}_button {
+                    label = "${b.label}";
+                    linux,code = <${code}>; // ${displayName}
+                    gpios = <&gpio ${b.gpio} 1>;
+                };`;
+            }).join('\n');
+
+            const dts = `/dts-v1/;\n/plugin/;\n/ {\n    compatible = "brcm,bcm2837";\n    fragment@0 { target = <&gpio>; __overlay__ { gp43_button_pins: gp43_button_pins { brcm,pins = <2 4 17 27 22 10 9 25 24 15 18 14 23>; brcm,function = <0>; brcm,pull = <2>; }; }; };\n    fragment@1 { target-path = "/"; __overlay__ { gamepi43_buttons: gamepi43_buttons { compatible = "gpio-keys"; pinctrl-names = "default"; pinctrl-0 = <&gp43_button_pins>;\n${config}\n            };\n        };\n    };\n};`;
+            document.getElementById('output').value = dts;
+        }
+        
+        function download() {
+            generate();
+            const blob = new Blob([document.getElementById('output').value], {type: 'text/plain'});
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'gamepi43.dts';
+            a.click();
+        }
+    </script>
+</body>
+</html>
