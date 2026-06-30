@@ -6,13 +6,14 @@
     <style>
         :root { --bg-color: #1a1a1a; --panel-bg: #252525; --text-color: #e0e0e0; --border-color: #444; --accent-blue: #3498db; --accent-red: #e74c3c; --accent-green: #2ecc71; }
         body { font-family: sans-serif; padding: 10px; background-color: var(--bg-color); color: var(--text-color); }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto; }
         h1 { font-size: 1.2rem; border-bottom: 2px solid var(--accent-blue); padding-bottom: 5px; }
         .form-panel { background: var(--panel-bg); padding: 10px; border-radius: 4px; }
         .input-row { display: flex; align-items: center; gap: 5px; padding: 4px 0; border-bottom: 1px solid #333; }
         .input-row label { width: 60px; font-weight: bold; color: #aaa; flex-shrink: 0; font-size: 0.9rem; }
-        .input-row input { width: 60px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
-        .input-row .key-name { width: 150px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
+        .input-row input { width: 50px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .input-row select { width: 150px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .input-row .key-name { width: 100px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
         .btn-group { display: flex; gap: 5px; flex-shrink: 0; }
         button { padding: 4px 8px; cursor: pointer; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         .btn-clear { background-color: var(--accent-red); color: white; }
@@ -32,7 +33,6 @@
     </div>
 
     <script>
-        // Linux Input Code マッピングテーブル (event.code ベース)
         const linuxKeyMap = {
             "KeyA": 30, "KeyB": 48, "KeyC": 46, "KeyD": 32, "KeyE": 18, "KeyF": 33, "KeyG": 34, "KeyH": 35, "KeyI": 23, "KeyJ": 36, "KeyK": 37, "KeyL": 38, "KeyM": 50, "KeyN": 49, "KeyO": 24, "KeyP": 25, "KeyQ": 16, "KeyR": 19, "KeyS": 31, "KeyT": 20, "KeyU": 22, "KeyV": 47, "KeyW": 17, "KeyX": 45, "KeyY": 21, "KeyZ": 44,
             "Digit1": 2, "Digit2": 3, "Digit3": 4, "Digit4": 5, "Digit5": 6, "Digit6": 7, "Digit7": 8, "Digit8": 9, "Digit9": 10, "Digit0": 11,
@@ -42,6 +42,15 @@
             "Insert": 110, "Delete": 111, "Home": 102, "End": 107, "PageUp": 104, "PageDown": 109,
             "ShiftLeft": 42, "ShiftRight": 54, "ControlLeft": 29, "ControlRight": 97, "AltLeft": 56, "AltRight": 100, "MetaLeft": 125, "MetaRight": 126
         };
+
+        const presetKeys = [
+            { name: "--- Select ---", code: "" },
+            { name: "UP (103)", code: 103 }, { name: "DOWN (108)", code: 108 },
+            { name: "LEFT (105)", code: 105 }, { name: "RIGHT (106)", code: 106 },
+            { name: "ENTER (28)", code: 28 }, { name: "ESC (1)", code: 1 },
+            { name: "SHIFT (42)", code: 42 }, { name: "Z (44)", code: 44 }, { name: "X (45)", code: 45 },
+            { name: "A (30)", code: 30 }, { name: "S (31)", code: 31 }
+        ];
 
         const buttons = [
             { id: 'up', label: 'UP', gpio: 4 }, { id: 'down', label: 'DOWN', gpio: 17 },
@@ -53,15 +62,16 @@
             { id: 'hotkey', label: 'HOTKEY', gpio: 2 }
         ];
 
-        let keyAssignments = {};
         const container = document.getElementById('form-container');
 
         buttons.forEach(b => {
+            const options = presetKeys.map(k => `<option value="${k.code}">${k.name}</option>`).join('');
             container.innerHTML += `
                 <div class="input-row">
                     <label>${b.label}</label>
-                    <input type="text" id="code_${b.id}" placeholder="0" readonly>
-                    <span id="label_${b.id}" class="key-name">Not Assigned</span>
+                    <input type="text" id="code_${b.id}" placeholder="Code">
+                    <select id="sel_${b.id}" onchange="selectPreset('${b.id}')">${options}</select>
+                    <span id="label_${b.id}" class="key-name">-</span>
                     <div class="btn-group">
                         <button class="btn-clear" onclick="clearRow('${b.id}')">Clear</button>
                         <button class="btn-capture" id="btn_${b.id}" onclick="captureKey('${b.id}', event)">Capture</button>
@@ -70,10 +80,21 @@
             `;
         });
 
+        function selectPreset(btnId) {
+            const select = document.getElementById('sel_' + btnId);
+            const code = select.value;
+            if(code !== "") {
+                const name = select.options[select.selectedIndex].text;
+                document.getElementById('code_' + btnId).value = code;
+                document.getElementById('label_' + btnId).innerText = name;
+            }
+        }
+
         function clearRow(btnId) {
             document.getElementById('code_' + btnId).value = '';
-            document.getElementById('label_' + btnId).innerText = 'Not Assigned';
-            delete keyAssignments[btnId];
+            document.getElementById('label_' + btnId).innerText = '-';
+            const sel = document.getElementById('sel_' + btnId);
+            if(sel) sel.value = '';
         }
 
         function clearAll() { buttons.forEach(b => clearRow(b.id)); }
@@ -85,21 +106,18 @@
 
             const handler = (e) => {
                 const linuxCode = linuxKeyMap[e.code];
-                
                 if (linuxCode !== undefined) {
                     document.getElementById('code_' + btnId).value = linuxCode;
-                    document.getElementById('label_' + btnId).innerText = e.code;
-                    keyAssignments[btnId] = linuxCode;
+                    document.getElementById('sel_' + btnId).value = '';
+                    document.getElementById('label_${btnId}'.replace('${btnId}', btnId)).innerText = e.code;
                 } else {
-                    alert("未登録のキーです (code: " + e.code + ")。テーブルに追加してください。");
+                    alert("未登録のキーです (code: " + e.code + ")");
                 }
-                
                 btn.style.backgroundColor = 'var(--accent-green)';
                 btn.innerText = 'Capture';
                 window.removeEventListener('keydown', handler);
                 e.preventDefault();
             };
-            
             setTimeout(() => { window.addEventListener('keydown', handler, {once: true}); }, 100);
         }
 
