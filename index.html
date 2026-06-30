@@ -13,7 +13,7 @@
         .input-row label { width: 60px; font-weight: bold; color: #aaa; flex-shrink: 0; font-size: 0.9rem; }
         .input-row input { width: 50px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
         .input-row select { width: 150px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
-        .input-row .key-name { width: 100px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
+        .input-row .key-name { width: 120px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
         .btn-group { display: flex; gap: 5px; flex-shrink: 0; }
         button { padding: 4px 8px; cursor: pointer; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         .btn-clear { background-color: var(--accent-red); color: white; }
@@ -47,9 +47,11 @@
             { name: "--- Select ---", code: "" },
             { name: "UP (103)", code: 103 }, { name: "DOWN (108)", code: 108 },
             { name: "LEFT (105)", code: 105 }, { name: "RIGHT (106)", code: 106 },
-            { name: "ENTER (28)", code: 28 }, { name: "ESC (1)", code: 1 },
-            { name: "SHIFT (42)", code: 42 }, { name: "Z (44)", code: 44 }, { name: "X (45)", code: 45 },
-            { name: "A (30)", code: 30 }, { name: "S (31)", code: 31 }
+            { name: "A (30)", code: 30 }, { name: "B (48)", code: 48 },
+            { name: "X (45)", code: 45 }, { name: "Y (21)", code: 21 },
+            { name: "START (28)", code: 28 }, { name: "SELECT (1)", code: 1 },
+            { name: "L (38)", code: 38 }, { name: "R (19)", code: 19 },
+            { name: "HOTKEY (57)", code: 57 }
         ];
 
         const buttons = [
@@ -102,16 +104,16 @@
         function captureKey(btnId, event) {
             const btn = event.target;
             btn.style.backgroundColor = 'var(--accent-red)';
-            btn.innerText = '押してください';
+            btn.innerText = 'Wait';
 
             const handler = (e) => {
                 const linuxCode = linuxKeyMap[e.code];
                 if (linuxCode !== undefined) {
                     document.getElementById('code_' + btnId).value = linuxCode;
-                    document.getElementById('sel_' + btnId).value = '';
-                    document.getElementById('label_${btnId}'.replace('${btnId}', btnId)).innerText = e.code;
+                    document.getElementById('sel_' + btnId).value = ''; 
+                    document.getElementById('label_' + btnId).innerText = e.code;
                 } else {
-                    alert("未登録のキーです (code: " + e.code + ")");
+                    alert("未登録のキーです (code: " + e.code + ")。辞書に追加が必要です。");
                 }
                 btn.style.backgroundColor = 'var(--accent-green)';
                 btn.innerText = 'Capture';
