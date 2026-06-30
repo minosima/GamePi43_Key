@@ -2,87 +2,47 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>GamePi43 DTS Generator</title>
+    <title>GamePi43 Full Keyboard DTS Generator</title>
     <style>
-        :root {
-            --bg-color: #1a1a1a;
-            --panel-bg: #252525;
-            --text-color: #e0e0e0;
-            --border-color: #444;
-            --accent-blue: #3498db;
-            --accent-red: #e74c3c;
-            --accent-green: #2ecc71;
-        }
-
-        body { 
-            font-family: sans-serif; 
-            padding: 10px; 
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-
-        .container { max-width: 700px; margin: 0 auto; }
+        :root { --bg-color: #1a1a1a; --panel-bg: #252525; --text-color: #e0e0e0; --border-color: #444; --accent-blue: #3498db; --accent-red: #e74c3c; --accent-green: #2ecc71; }
+        body { font-family: sans-serif; padding: 10px; background-color: var(--bg-color); color: var(--text-color); }
+        .container { max-width: 800px; margin: 0 auto; }
         h1 { font-size: 1.2rem; border-bottom: 2px solid var(--accent-blue); padding-bottom: 5px; }
-
-        .form-panel {
-            background: var(--panel-bg);
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        /* 行の配置：横並びを強制し、折り返しを防ぐ */
-        .input-row { 
-            display: flex; 
-            align-items: center; 
-            gap: 5px; 
-            padding: 4px 0; 
-            border-bottom: 1px solid #333;
-            white-space: nowrap;
-        }
-
-        /* 各要素の幅をコンパクトに調整 */
-        .input-row label { width: 50px; font-weight: bold; color: #aaa; flex-shrink: 0; font-size: 0.9rem; }
-        .input-row input { width: 50px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
-        .input-row select { width: 120px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
-        .input-row .key-name { width: 100px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
-
-        /* ボタンエリア：親要素に追従させ、右寄せにしない */
+        .form-panel { background: var(--panel-bg); padding: 10px; border-radius: 4px; }
+        .input-row { display: flex; align-items: center; gap: 5px; padding: 4px 0; border-bottom: 1px solid #333; }
+        .input-row label { width: 60px; font-weight: bold; color: #aaa; flex-shrink: 0; font-size: 0.9rem; }
+        .input-row input { width: 60px; flex-shrink: 0; padding: 4px; background: #111; color: #fff; border: 1px solid #444; border-radius: 4px; }
+        .input-row .key-name { width: 150px; flex-shrink: 0; color: var(--accent-blue); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; }
         .btn-group { display: flex; gap: 5px; flex-shrink: 0; }
-
-        button { 
-            padding: 4px 8px; cursor: pointer; 
-            border: none; border-radius: 4px;
-            font-size: 0.8rem; font-weight: bold;
-        }
-
+        button { padding: 4px 8px; cursor: pointer; border: none; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
         .btn-clear { background-color: var(--accent-red); color: white; }
         .btn-capture { background-color: var(--accent-green); color: white; }
-        
         .btn-main { background-color: var(--accent-blue); color: white; margin-top: 10px; padding: 8px 16px; }
-
-        textarea { 
-            width: 100%; height: 200px; 
-            background: #000; color: #0f0; 
-            font-family: monospace; 
-            margin-top: 10px; padding: 10px; border-radius: 4px;
-        }
+        textarea { width: 100%; height: 250px; background: #000; color: #0f0; font-family: monospace; margin-top: 10px; padding: 10px; border-radius: 4px; }
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1>GamePi43 DTS Generator</h1>
+        <h1>GamePi43 Full Keyboard DTS Generator</h1>
         <button onclick="clearAll()" class="btn-clear" style="margin-bottom:10px;">All Clear</button>
-
         <div id="form-container" class="form-panel"></div>
-        
         <button onclick="generate()" class="btn-main">Generate DTS</button>
         <button onclick="download()" class="btn-main" style="background-color: #555;">Download .dts</button>
-
         <textarea id="output" readonly></textarea>
     </div>
 
     <script>
+        // Linux Input Code マッピングテーブル (event.code ベース)
+        const linuxKeyMap = {
+            "KeyA": 30, "KeyB": 48, "KeyC": 46, "KeyD": 32, "KeyE": 18, "KeyF": 33, "KeyG": 34, "KeyH": 35, "KeyI": 23, "KeyJ": 36, "KeyK": 37, "KeyL": 38, "KeyM": 50, "KeyN": 49, "KeyO": 24, "KeyP": 25, "KeyQ": 16, "KeyR": 19, "KeyS": 31, "KeyT": 20, "KeyU": 22, "KeyV": 47, "KeyW": 17, "KeyX": 45, "KeyY": 21, "KeyZ": 44,
+            "Digit1": 2, "Digit2": 3, "Digit3": 4, "Digit4": 5, "Digit5": 6, "Digit6": 7, "Digit7": 8, "Digit8": 9, "Digit9": 10, "Digit0": 11,
+            "Minus": 12, "Equal": 13, "Backspace": 14, "Tab": 15, "Enter": 28, "Space": 57,
+            "BracketLeft": 26, "BracketRight": 27, "Backslash": 43, "Semicolon": 39, "Quote": 40, "Comma": 51, "Period": 52, "Slash": 53,
+            "ArrowUp": 103, "ArrowDown": 108, "ArrowLeft": 105, "ArrowRight": 106,
+            "Insert": 110, "Delete": 111, "Home": 102, "End": 107, "PageUp": 104, "PageDown": 109,
+            "ShiftLeft": 42, "ShiftRight": 54, "ControlLeft": 29, "ControlRight": 97, "AltLeft": 56, "AltRight": 100, "MetaLeft": 125, "MetaRight": 126
+        };
+
         const buttons = [
             { id: 'up', label: 'UP', gpio: 4 }, { id: 'down', label: 'DOWN', gpio: 17 },
             { id: 'left', label: 'LEFT', gpio: 27 }, { id: 'right', label: 'RIGHT', gpio: 22 },
@@ -93,26 +53,15 @@
             { id: 'hotkey', label: 'HOTKEY', gpio: 2 }
         ];
 
-        const presetKeys = [
-            { name: "--- Select ---", code: "" },
-            { name: "SHIFT (L)", code: 42 }, { name: "SHIFT (R)", code: 54 },
-            { name: "CTRL (L)", code: 29 }, { name: "CTRL (R)", code: 97 },
-            { name: "ALT (L)", code: 56 }, { name: "ALT (R)", code: 100 },
-            { name: "RasPi Key (L)", code: 125 }, { name: "RasPi Key (R)", code: 126 }
-        ];
-
-        let keyNames = {};
+        let keyAssignments = {};
         const container = document.getElementById('form-container');
 
         buttons.forEach(b => {
-            const options = presetKeys.map(k => `<option value="${k.code}">${k.name}</option>`).join('');
-            
             container.innerHTML += `
                 <div class="input-row">
                     <label>${b.label}</label>
-                    <input type="text" id="code_${b.id}" placeholder="Code">
-                    <select id="sel_${b.id}" onchange="selectPreset('${b.id}')">${options}</select>
-                    <span id="label_${b.id}" class="key-name">-</span>
+                    <input type="text" id="code_${b.id}" placeholder="0" readonly>
+                    <span id="label_${b.id}" class="key-name">Not Assigned</span>
                     <div class="btn-group">
                         <button class="btn-clear" onclick="clearRow('${b.id}')">Clear</button>
                         <button class="btn-capture" id="btn_${b.id}" onclick="captureKey('${b.id}', event)">Capture</button>
@@ -121,70 +70,46 @@
             `;
         });
 
-        function getDisplayName(name) {
-            if (name.toUpperCase() === "META" || name.toUpperCase().includes("RASPI KEY")) {
-                return "RasPi Key";
-            }
-            return name.toUpperCase();
-        }
-
-        function selectPreset(btnId) {
-            const select = document.getElementById('sel_' + btnId);
-            const code = select.value;
-            if(code !== "") {
-                const name = select.options[select.selectedIndex].text;
-                document.getElementById('code_' + btnId).value = code;
-                document.getElementById('label_' + btnId).innerText = name;
-                keyNames[btnId] = name;
-            }
-        }
-
         function clearRow(btnId) {
             document.getElementById('code_' + btnId).value = '';
-            document.getElementById('label_' + btnId).innerText = '-';
-            const sel = document.getElementById('sel_' + btnId);
-            if(sel) sel.value = '';
-            delete keyNames[btnId];
+            document.getElementById('label_' + btnId).innerText = 'Not Assigned';
+            delete keyAssignments[btnId];
         }
 
-        function clearAll() {
-            buttons.forEach(b => clearRow(b.id));
-        }
+        function clearAll() { buttons.forEach(b => clearRow(b.id)); }
 
         function captureKey(btnId, event) {
             const btn = event.target;
             btn.style.backgroundColor = 'var(--accent-red)';
-            btn.innerText = 'Wait';
+            btn.innerText = '押してください';
 
             const handler = (e) => {
-                const code = e.keyCode;
-                document.getElementById('code_' + btnId).value = code;
-                document.getElementById('sel_' + btnId).value = '';
-
-                const name = getDisplayName(e.key);
-                document.getElementById('label_' + btnId).innerText = name;
-                keyNames[btnId] = name;
+                const linuxCode = linuxKeyMap[e.code];
+                
+                if (linuxCode !== undefined) {
+                    document.getElementById('code_' + btnId).value = linuxCode;
+                    document.getElementById('label_' + btnId).innerText = e.code;
+                    keyAssignments[btnId] = linuxCode;
+                } else {
+                    alert("未登録のキーです (code: " + e.code + ")。テーブルに追加してください。");
+                }
                 
                 btn.style.backgroundColor = 'var(--accent-green)';
                 btn.innerText = 'Capture';
-                
                 window.removeEventListener('keydown', handler);
                 e.preventDefault();
             };
             
-            setTimeout(() => {
-                window.addEventListener('keydown', handler, {once: true});
-            }, 100);
+            setTimeout(() => { window.addEventListener('keydown', handler, {once: true}); }, 100);
         }
 
         function generate() {
             let config = buttons.map(b => {
                 const code = document.getElementById('code_' + b.id).value || 0;
-                const displayName = keyNames[b.id] || ("KEY_" + code);
                 return `
                 ${b.id}_button: ${b.id}_button {
                     label = "${b.label}";
-                    linux,code = <${code}>; // ${displayName}
+                    linux,code = <${code}>;
                     gpios = <&gpio ${b.gpio} 1>;
                 };`;
             }).join('\n');
